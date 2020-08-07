@@ -113,6 +113,7 @@ class PythonStore : public ::c10d::Store {
 // c10d PythonCommHook object using these inputs. It later calls
 // register_comm_hook function of the reducer input to register that
 // PythonCommHook object.
+// DDP communication hook can be overridden multiple times.
 void _register_comm_hook(
     ::c10d::Reducer& reducer,
     py::object state,

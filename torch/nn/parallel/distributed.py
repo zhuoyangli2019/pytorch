@@ -649,8 +649,8 @@ class DistributedDataParallel(Module):
             to divide by the world_size in case of operations like allreduce.
 
         .. warning ::
-            DDP communication hook can only be registered once and should be registered
-            before calling backward.
+            DDP communication hook be registered multiple times, but reducer must be done
+            with any prior gradient computations before registering a new hook.
 
         .. warning ::
             The Future object that hook returns should contain a result that has the same
