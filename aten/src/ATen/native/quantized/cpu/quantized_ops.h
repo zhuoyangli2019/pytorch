@@ -5,6 +5,8 @@
 namespace at {
 namespace native {
 
+using activation_fn = void (*)(TensorIterator&);
+
 using qrelu_fn = void (*)(const at::Tensor& /*qx*/, at::Tensor& /*qy*/);
 using qrelu_leaky_fn = void (*)(Tensor& /*out*/, const Tensor& /*qx*/,
                                 Scalar /*negval_*/);
@@ -152,7 +154,8 @@ using qnormalize_fn = void (*)(
     double /* eps */,
     Tensor* /* Y */);
 
-// using qavg_pool2d_fn
+DECLARE_DISPATCH(activation_fn, qglu_stub);
+DECLARE_DISPATCH(activation_fn, qhardglu_stub);
 DECLARE_DISPATCH(qrelu_fn, qrelu_stub);
 DECLARE_DISPATCH(qrelu_fn, qrelu6_stub);
 DECLARE_DISPATCH(qrelu_leaky_fn, qrelu_leaky_stub);
