@@ -309,8 +309,8 @@ multiply the result by the scalar :attr:`value` and add it to :attr:`input`.
     (:attr:`input` + :attr:`value` * :attr:`tensor1` // :attr:`tensor2`)
     and :func:`div` for float inputs
     (:attr:`input` + :attr:`value` * :attr:`tensor1` / :attr:`tensor2`).
-    The future addcdiv behavior can be implemented with :func:`true_divide`
-    (:attr:`input` + :attr:`value` * torch.true_divide(:attr:`tensor1`,
+    The future addcdiv behavior can be implemented with :func:`div`
+    (:attr:`input` + :attr:`value` * torch.div(:attr:`tensor1`,
     :attr:`tensor2`).
 
 .. math::
@@ -2070,36 +2070,37 @@ Example::
     tensor(2.6537)
 """.format(**common_args))
 
-add_docstr(torch.div,
-           r"""
-div(input, other, out=None) -> Tensor
+add_docstr(torch.div, r"""
+div(input, other, *, out=None) -> Tensor
 
-Divides each element of the input ``input`` with the scalar ``other`` and
-returns a new resulting tensor.
-
-.. warning::
-    Integer division using div is no longer supported, and in a future release
-    div will perform true division as in Python 3. Use :func:`torch.true_divide`
-    or :func:`torch.floor_divide` (// in Python), instead.
+Divides each element of :attr:`input` by the corresponding element of
+:attr:`other`.
 
 .. math::
-    \text{{out}}_i = \frac{{\text{{input}}_i}}{{\text{{other}}}}
+    \text{{out}}_i = \frac{{\text{{input}}_i}}{{\text{{other}}_i}}
 
-If the :class:`torch.dtype` of ``input`` and ``other`` differ, the
-:class:`torch.dtype` of the result tensor is determined following rules
-described in the type promotion :ref:`documentation <type-promotion-doc>`. If
-``out`` is specified, the result must be :ref:`castable <type-promotion-doc>`
-to the :class:`torch.dtype` of the specified output tensor. Integral division
-by zero leads to undefined behavior.
+.. note::
+    Performs a "true" division like Python 3. To perform integer or "floor"
+    division use :func:`torch.floor_divide`.
+
+.. note::
+    If :attr:`other` is a tensor, the shapes of :attr:`input` and :attr:`other`
+    must be :ref:`broadcastable <broadcasting-semantics>`. If the
+    :class:`torch.dtype` of :attr:`input` and :attr:`other` differ,
+    the :class:`torch.dtype` of the result tensor is determined
+    following rules described in the type promotion :ref:`documentation
+    <type-promotion-doc>`. If :attr:`out` is specified, the result must be
+    :ref:`castable <type-promotion-doc>` to the :class:`torch.dtype` of the
+    specified output tensor.
 
 Args:
-    {input}
-    other (Number): the number to be divided to each element of ``input``
+    input (Tensor): the dividend
+    other (Tensor or Scalar): the divisor
 
 Keyword args:
     {out}
 
-Example::
+Examples::
 
     >>> a = torch.randn(5)
     >>> a
@@ -2107,30 +2108,10 @@ Example::
     >>> torch.div(a, 0.5)
     tensor([ 0.7620,  2.5548, -0.5944, -0.7439,  0.9275])
 
-.. function:: div(input, other, out=None) -> Tensor
-
-Each element of the tensor ``input`` is divided by each element of the tensor
-``other``. The resulting tensor is returned.
-
-.. math::
-    \text{{out}}_i = \frac{{\text{{input}}_i}}{{\text{{other}}_i}}
-
-The shapes of ``input`` and ``other`` must be :ref:`broadcastable
-<broadcasting-semantics>`. If the :class:`torch.dtype` of ``input`` and
-``other`` differ, the :class:`torch.dtype` of the result tensor is determined
-following rules described in the type promotion :ref:`documentation
-<type-promotion-doc>`. If ``out`` is specified, the result must be
-:ref:`castable <type-promotion-doc>` to the :class:`torch.dtype` of the
-specified output tensor. Integral division by zero leads to undefined behavior.
-
-Args:
-    input (Tensor): the numerator tensor
-    other (Tensor): the denominator tensor
-
-Keyword args:
-    {out}
-
-Example::
+    >>> a = torch.tensor([5, 3], dtype=torch.int64)
+    >>> b = torch.tensor([3, 2], dtype=torch.int64)
+    >>> torch.div(a, b)
+    tensor([1.6667, 1.5000])
 
     >>> a = torch.randn(4, 4)
     >>> a
@@ -4029,7 +4010,7 @@ add_docstr(torch.quantile,
            r"""
 quantile(input, q) -> Tensor
 
-Returns the q-th quantiles of all elements in the :attr:`input` tensor, doing a linear 
+Returns the q-th quantiles of all elements in the :attr:`input` tensor, doing a linear
 interpolation when the q-th quantile lies between two data.
 
 Args:
@@ -4048,16 +4029,16 @@ Example::
 .. function:: quantile(input, q, dim=None, keepdim=False, *, out=None) -> Tensor
 
 Returns the q-th quantiles of each row of the :attr:`input` tensor along the dimension
-:attr:`dim`, doing a linear interpolation when the q-th quantile lies between two 
+:attr:`dim`, doing a linear interpolation when the q-th quantile lies between two
 data points. By default, :attr:`dim` is `None` resulting in the :attr:`input` tensor
 beign flattened before computation.
 
-If :attr:`q` is a 1D tensor, the first dimension of the result corresponds to the quantiles 
+If :attr:`q` is a 1D tensor, the first dimension of the result corresponds to the quantiles
 and the remaining dimensions are what remains from the reduction of the :attr:`input` tensor.
 If :attr:`q` is a scalar or scalar tensor, the result is placed in the reduced dimension.
 
-If :attr:`keepdim` is ``True``, the remaining dimensions are of the same size as 
-:attr:`input` except in the dimension :attr:`dim` where it is size 1. Otherwise, 
+If :attr:`keepdim` is ``True``, the remaining dimensions are of the same size as
+:attr:`input` except in the dimension :attr:`dim` where it is size 1. Otherwise,
 the dimension :attr:`dim` is squeezed (see :func:`torch.squeeze`).
 
 Args:
@@ -7042,29 +7023,7 @@ Example::
 add_docstr(torch.true_divide, r"""
 true_divide(dividend, divisor, *, out) -> Tensor
 
-Performs "true division" that always computes the division
-in floating point. Analogous to division in Python 3 and equivalent to
-:func:`torch.div` except when both inputs have bool or integer scalar types,
-in which case they are cast to the default (floating) scalar type before the division.
-
-.. math::
-    \text{{out}}_i = \frac{{\text{{dividend}}_i}}{{\text{{divisor}}}}
-
-Args:
-    dividend (Tensor): the dividend
-    divisor (Tensor or Scalar): the divisor
-
-Keyword args:
-    {out}
-
-Example::
-
-    >>> dividend = torch.tensor([5, 3], dtype=torch.int)
-    >>> divisor = torch.tensor([3, 2], dtype=torch.int)
-    >>> torch.true_divide(dividend, divisor)
-    tensor([1.6667, 1.5000])
-    >>> torch.true_divide(dividend, 2)
-    tensor([2.5000, 1.5000])
+Alias for :func:`torch.div`.
 """.format(**common_args))
 
 add_docstr(torch.trunc,

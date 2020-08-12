@@ -103,8 +103,40 @@ def rsub(g, self, other, alpha=None):
 def mul(g, self, other):
     return g.op("Mul", self, other)
 
-
+# Division in PyTorch is always "true" division like Python 3
+# This is mimicked in ONNX by attempting to cast both inputs to float types
+# Cases:
+#   If both inputs are floating, performs div as usual
+#   If only one input is a floating type, the other input is cast to its type
+#   If neither input is a floating type, both inputs are cast to the default scalar type
 def div(g, self, other):
+    # Case 1: both values are floating
+    # Performs div as usual
+    if sym_help._is_fp(self) and sym_help._is_fp(other):
+        return g.op("Div", self, other)
+
+    # Case 2: self is floating, other is not
+    # Casts other to self's dtype
+    if sym_help._is_fp(self):
+        g.op("Cast", other, to_i=sym_help.cast_pytorch_to_onnx[self.type().scalarType()])
+        return g.op("Div", self, other)
+
+    # Case 3: other is floating, self is not
+    # Casts self to other's dtype
+    if sym_help._is_fp(other):
+        g.op("Cast", other, to_i=sym_help.cast_pytorch_to_onnx[other.type().scalarType()])
+        return g.op("Div", self, other)
+
+    # Case 4: neither is floating
+    # Casts both inputs to the default scalar type
+    scalar_type = torch.get_default_dtype()
+    onnx_scalar_type = sym_help.cast_pytorch_to_onnx['Float']
+    assert scalar_type is torch.float or scalar_type is torch.double
+    if torch.get_default_dtype() is torch.double:
+        onnx_scalar_type = sym_help.cast_pytorch_to_onnx['Double']
+
+    g.op("Cast", self, to_i=onnx_scalar_type)
+    g.op("Cast", other, to_i=onnx_scalar_type)
     return g.op("Div", self, other)
 
 
@@ -135,38 +167,8 @@ def floor_divide(g, self, other):
     return out
 
 
-# Division where both inputs are cast to floating types
-# If both inputs are floating, performs div as usual
-# If only one input is a floating type, the other input is cast to its type
-# If neither input is a floating type, both inputs are cast to the default scalar type
+# Alias for div
 def true_divide(g, self, other):
-    # Case 1: both values are floating
-    # Performs div as usual
-    if sym_help._is_fp(self) and sym_help._is_fp(other):
-        return div(g, self, other)
-
-    # Case 2: self is floating, other is not
-    # Casts other to self's dtype
-    if sym_help._is_fp(self):
-        g.op("Cast", other, to_i=sym_help.cast_pytorch_to_onnx[self.type().scalarType()])
-        return div(g, self, other)
-
-    # Case 3: other is floating, self is not
-    # Casts self to other's dtype
-    if sym_help._is_fp(other):
-        g.op("Cast", other, to_i=sym_help.cast_pytorch_to_onnx[other.type().scalarType()])
-        return div(g, self, other)
-
-    # Case 4: neither is floating
-    # Casts both inputs to the default scalar type
-    scalar_type = torch.get_default_dtype()
-    onnx_scalar_type = sym_help.cast_pytorch_to_onnx['Float']
-    assert scalar_type is torch.float or scalar_type is torch.double
-    if torch.get_default_dtype() is torch.double:
-        onnx_scalar_type = sym_help.cast_pytorch_to_onnx['Double']
-
-    g.op("Cast", self, to_i=onnx_scalar_type)
-    g.op("Cast", other, to_i=onnx_scalar_type)
     return div(g, self, other)
 
 
@@ -1046,7 +1048,7 @@ def __lshift_(g, self, other):
 
 def where(g, condition, self, other):
     # Assumes that torch.where's first argument takes only Bool and Byte tensors.
-    if condition.type().scalarType() != 'Bool': 
+    if condition.type().scalarType() != 'Bool':
         condition = g.op("Cast", condition, to_i=sym_help.cast_pytorch_to_onnx['Bool'])
     return g.op("Where", condition, self, other)
 
@@ -1509,12 +1511,12 @@ def tensor(g, data, dtype=None, device=None, requires_grad=False):
         if dtype is None:
             dtype = sym_help._unpack_list(data)[0].type().scalarType()
             dtype = sym_help.scalar_type_to_onnx.index(sym_help.cast_pytorch_to_onnx[dtype])
-        input_list = list()   
+        input_list = list()
         for t in sym_help._unpack_list(data):
             shape_reference = g.op("Constant", value_t=torch.LongTensor([1]))
             t = g.op("Reshape", t, shape_reference)
             t = g.op("Cast", t, to_i=sym_help.scalar_type_to_onnx[dtype])
-            input_list.append(t)    
+            input_list.append(t)
         return g.op("Concat", *input_list, axis_i=0)
     else:
         if dtype is None:

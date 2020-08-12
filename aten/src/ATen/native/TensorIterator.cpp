@@ -686,7 +686,7 @@ void TensorIterator::select_all_keeping_dim(int start_dim, IntArrayRef indices) 
 }
 
 TensorIterator TensorIterator::binary_op(Tensor& out, const Tensor& a,
-    const Tensor& b, bool check_mem_overlap) {
+    const Tensor& b, bool check_mem_overlap, bool promote_integer_inputs_to_float) {
   return TensorIteratorConfig()
      .set_check_mem_overlap(check_mem_overlap)
      .add_output(out)
@@ -696,6 +696,7 @@ TensorIterator TensorIterator::binary_op(Tensor& out, const Tensor& a,
      .promote_inputs_to_common_dtype(true)
      .cast_common_dtype_to_outputs(true)
      .enforce_safe_casting_to_output(true)
+     .promote_integer_inputs_to_float(promote_integer_inputs_to_float)
      .build();
 }
 

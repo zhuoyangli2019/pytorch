@@ -164,6 +164,10 @@ namespace c10 {
   _(aten, addmv_)                    \
   _(aten, addr_)                     \
   _(aten, baddbmm_)                  \
+  _(aten, div)                       \
+  _(aten, div_)                      \
+  _(aten, true_divide)               \
+  _(aten, true_divide_)              \
   _(aten, ge_)                       \
   _(aten, gt_)                       \
   _(aten, le_)                       \

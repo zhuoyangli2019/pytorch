@@ -496,7 +496,7 @@ class TestONNXRuntime(unittest.TestCase):
         class ScalarInputModel(torch.jit.ScriptModule):
             @torch.jit.script_method
             def forward(self, input):
-                return torch.tensor(input.shape[1]) 
+                return torch.tensor(input.shape[1])
 
         x = torch.randn(3, 4)
         self.run_test(ScalarInputModel(), x)
@@ -504,7 +504,7 @@ class TestONNXRuntime(unittest.TestCase):
         class TensorInputModel(torch.jit.ScriptModule):
             @torch.jit.script_method
             def forward(self, input):
-                return torch.tensor([input.shape[0], input.shape[1]]) 
+                return torch.tensor([input.shape[0], input.shape[1]])
 
         x = torch.randn(3, 4)
         self.run_test(TensorInputModel(), x)
@@ -520,7 +520,7 @@ class TestONNXRuntime(unittest.TestCase):
         class InputWithDtypeModel(torch.jit.ScriptModule):
             @torch.jit.script_method
             def forward(self, input):
-                return torch.tensor(input.shape[1], dtype=torch.long) 
+                return torch.tensor(input.shape[1], dtype=torch.long)
 
         x = torch.randn(3, 4)
         self.run_test(InputWithDtypeModel(), x)
@@ -528,7 +528,7 @@ class TestONNXRuntime(unittest.TestCase):
         class MixedInputModel(torch.jit.ScriptModule):
             @torch.jit.script_method
             def forward(self, input):
-                return torch.tensor([input.shape[0], int(input)]) 
+                return torch.tensor([input.shape[0], int(input)])
 
         x = torch.randn(1)
         self.run_test(MixedInputModel(), x)
@@ -815,25 +815,26 @@ class TestONNXRuntime(unittest.TestCase):
         y = torch.randn(2, 3, 4)
         self.run_test(FloorDivModule(), (x, y))
 
-    def test_true_div(self):
-        class TrueDivModule(torch.nn.Module):
+    def test_div(self):
+        class DivModule(torch.nn.Module):
             def forward(self, x, y):
-                return torch.true_divide(x, y)
+                return torch.div(x, y)
 
         x = torch.randn(2, 3, 4).to(torch.int)
         y = torch.arange(1, 2 * 3 * 4 + 1).reshape(2, 3, 4).to(torch.int)
-        self.run_test(TrueDivModule(), (x, y))
-        self.run_test(TrueDivModule(), (x.float(), y))
-        self.run_test(TrueDivModule(), (x.to(torch.short), y.to(torch.short)))
+        self.run_test(DivModule(), (x, y))
+        self.run_test(DivModule(), (x.float(), y))
+        self.run_test(DivModule(), (x.float(), y.float()))
+        self.run_test(DivModule(), (x.to(torch.short), y.to(torch.short)))
 
-    # Note: true_divide cannot (generally) be exported via scripting
+    # Note: div cannot (generally) be exported via scripting
     # since its type promotion logic is dependent on knowing the scalar types
     # of the input tensors. That is, the ONNX graph is dependent on the
     # data type of the inputs. This makes it appropriate for tracing only.
-    def test_true_div_trace(self):
-        class TrueDivModule(torch.nn.Module):
+    def test_div_promotion_trace(self):
+        class DivModule(torch.nn.Module):
             def forward(self, x, y):
-                return torch.true_divide(x, y)
+                return torch.div(x, y)
 
         x = torch.randn(2, 3, 4).to(torch.int)
         y = torch.arange(1, 2 * 3 * 4 + 1).reshape(2, 3, 4).to(torch.int)
@@ -841,10 +842,10 @@ class TestONNXRuntime(unittest.TestCase):
         prev_default = torch.get_default_dtype()
 
         torch.set_default_dtype(torch.float)
-        self.run_test(torch.jit.trace(TrueDivModule(), (x, y)), (x, y))
+        self.run_test(torch.jit.trace(DivModule(), (x, y)), (x, y))
 
         torch.set_default_dtype(torch.double)
-        self.run_test(torch.jit.trace(TrueDivModule(), (x, y)), (x, y))
+        self.run_test(torch.jit.trace(DivModule(), (x, y)), (x, y))
 
         torch.set_default_dtype(prev_default)
 

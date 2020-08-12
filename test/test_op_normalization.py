@@ -40,6 +40,10 @@ alias_infos = (
     AliasInfo('linalg.det', torch.linalg.det, 'det',
               torch.randn(10, 10), decorators=(skipCPUIfNoLapack, skipCUDAIfNoMagma)),
     AliasInfo('outer', torch.outer, 'ger',
+              torch.randn(20), args=(torch.randn(20),)),
+    AliasInfo('true_divide', torch.true_divide, 'div',
+              torch.randn(20), args=(torch.randn(20),)),
+    AliasInfo('true_divide_', torch.Tensor.true_divide_, 'div_',
               torch.randn(20), args=(torch.randn(20),))
 )
 

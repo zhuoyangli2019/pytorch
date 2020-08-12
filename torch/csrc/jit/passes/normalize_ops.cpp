@@ -13,7 +13,9 @@ static const std::unordered_map<Symbol, Symbol> alias_map = {
     {aten::clip, aten::clamp},
     {aten::clip_, aten::clamp_},
     {aten::linalg_det, aten::det},
-    {aten::outer, aten::ger}};
+    {aten::outer, aten::ger},
+    {aten::true_divide, aten::div},
+    {aten::true_divide_, aten::div_}};
 
 void replaceNodeWithNewSymbol(Node* node, Symbol new_symbol) {
   WithInsertPoint insert_guard{node};
