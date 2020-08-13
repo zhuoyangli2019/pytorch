@@ -11,7 +11,103 @@ from . import _linalg_utils as _utils
 from .overrides import has_torch_function, handle_torch_function
 
 
-__all__ = ['lobpcg']
+__all__ = ['lobpcg', 'lobpcg2']
+
+class LOBPCGAutogradFunction(torch.autograd.Function):
+
+    @staticmethod
+    def forward(ctx,
+                A,              # type: Tensor
+                k,              # type: Optional[int]
+                B,              # type: Optional[Tensor]
+                X,              # type: Optional[Tensor]
+                n,              # type: Optional[int]
+                iK,             # type: Optional[Tensor]
+                niter,          # type: Optional[int]
+                tol,            # type: Optional[float]
+                largest,        # type: Optional[bool]
+                method,         # type: Optional[str]
+                tracker,        # type: Optional[None]
+                ortho_iparams,  # type: Optional[Dict[str, int]]
+                ortho_fparams,  # type: Optional[Dict[str, float]]
+                ortho_bparams,  # type: Optional[Dict[str, bool]]
+                ):
+        # type: (...) -> Tuple[Tensor, Tensor]
+
+        #D, U = lobpcg(A, k, B, X, n, iK, niter, tol, largest, method, tracker, ortho_iparams, ortho_fparams, ortho_bparams)
+        D, U = torch.symeig(A, eigenvectors=True, upper=True)
+
+        ctx.save_for_backward(A, B, D, U)
+
+        return D, U
+
+    @staticmethod
+    def symeig_backward(D_grad, U_grad, A, D, U):
+        # compute F, such that F_ij = (d_i - d_j)^{-1} for i != j, F_ii = 0
+        F = D.unsqueeze(-2) - D.unsqueeze(-1)
+        F.diagonal().fill_(float('inf'))
+        F.pow_(-1)
+
+        # A.grad = U (D.grad + (U^T U.grad * F)) U^T
+        Ut = U.transpose(-1, -2)
+        res = torch.matmul(
+            U,
+            torch.matmul(
+                torch.diag_embed(D_grad) + torch.matmul(Ut, U_grad) * F,
+                Ut
+            )
+        )
+        # make res symmetric. The operation below does make sense assuming that
+        # A is symmetric, so that the variable A_ij is equavalent to the variable A_ji.
+        # This implies that the gradient contribution of A_ij
+        # is the sum of contributions, i.e.
+        # the A_ij gradient contribution is the sum (A_grad_ij + A_grad_ji).
+        # Now, we can modify the values A_grad_ij and A_grad_ji to any new values
+        # A_grad_new_ij and A_grad_new_ji which preserve the initial sum, i.e.
+        # it must be (A_grad_new_ij + A_grad_new_ji) == (A_grad_ij + A_grad_ji).
+        # We make the following transformation: A_grad_new_ij = (A_grad_ij + A_grad_ji) / 2,
+        # so that A_grad_new becomes symmetric.
+        # This way, along with A being symmetric, guarantees that the gradient descent step
+        # A_new = A - t * A_grad is still a symmetric matrix.
+        return (res + res.transpose(-1, -2)).mul(0.5)
+
+    @staticmethod
+    def backward(ctx, D_grad, U_grad):
+        A_grad = B_grad = None
+        grads = [None] * 14
+
+        A, B, D, U = ctx.saved_tensors
+
+        # symeig backward
+        if B is None:
+            A_grad = LOBPCGAutogradFunction.symeig_backward(
+                D_grad, U_grad, A, D, U
+            )
+
+        # A has index 0
+        grads[0] = A_grad
+        # B has index 2
+        grads[2] = B_grad
+        return tuple(grads)
+
+
+def lobpcg2(A,                   # type: Tensor
+            k=None,              # type: Optional[int]
+            B=None,              # type: Optional[Tensor]
+            X=None,              # type: Optional[Tensor]
+            n=None,              # type: Optional[int]
+            iK=None,             # type: Optional[Tensor]
+            niter=None,          # type: Optional[int]
+            tol=None,            # type: Optional[float]
+            largest=None,        # type: Optional[bool]
+            method=None,         # type: Optional[str]
+            tracker=None,        # type: Optional[None]
+            ortho_iparams=None,  # type: Optional[Dict[str, int]]
+            ortho_fparams=None,  # type: Optional[Dict[str, float]]
+            ortho_bparams=None,  # type: Optional[Dict[str, bool]]
+            ):
+    # type: (...) -> Tuple[Tensor, Tensor]
+    return LOBPCGAutogradFunction.apply(A, k, B, X, n, iK, niter, tol, largest, method, tracker, ortho_iparams, ortho_fparams, ortho_bparams)
 
 
 def lobpcg(A,                   # type: Tensor
