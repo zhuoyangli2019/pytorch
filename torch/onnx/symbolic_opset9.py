@@ -118,25 +118,25 @@ def div(g, self, other):
     # Case 2: self is floating, other is not
     # Casts other to self's dtype
     if sym_help._is_fp(self):
-        g.op("Cast", other, to_i=sym_help.cast_pytorch_to_onnx[self.type().scalarType()])
+        other = g.op("Cast", other, to_i=sym_help.cast_pytorch_to_onnx[self.type().scalarType()])
         return g.op("Div", self, other)
 
     # Case 3: other is floating, self is not
     # Casts self to other's dtype
     if sym_help._is_fp(other):
-        g.op("Cast", other, to_i=sym_help.cast_pytorch_to_onnx[other.type().scalarType()])
+        other = g.op("Cast", other, to_i=sym_help.cast_pytorch_to_onnx[other.type().scalarType()])
         return g.op("Div", self, other)
 
     # Case 4: neither is floating
     # Casts both inputs to the default scalar type
     scalar_type = torch.get_default_dtype()
-    onnx_scalar_type = sym_help.cast_pytorch_to_onnx['Float']
     assert scalar_type is torch.float or scalar_type is torch.double
+    onnx_scalar_type = sym_help.cast_pytorch_to_onnx['Float']
     if torch.get_default_dtype() is torch.double:
         onnx_scalar_type = sym_help.cast_pytorch_to_onnx['Double']
 
-    g.op("Cast", self, to_i=onnx_scalar_type)
-    g.op("Cast", other, to_i=onnx_scalar_type)
+    self = g.op("Cast", self, to_i=onnx_scalar_type)
+    other = g.op("Cast", other, to_i=onnx_scalar_type)
     return g.op("Div", self, other)
 
 

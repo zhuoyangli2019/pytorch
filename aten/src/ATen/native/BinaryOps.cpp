@@ -136,16 +136,16 @@ Tensor& div_(Tensor& self, const Tensor& other) {
 }
 
 // Implements the true_divide alias for div
-Tensor& true_divide_out(Tensor& result, const Tensor& self, const Tensor& divisor) {
-  return native::div_out(result, self, divisor);
+Tensor& true_divide_out(Tensor& result, const Tensor& self, const Tensor& other) {
+  return native::div_out(result, self, other);
 }
 
-Tensor true_divide(const Tensor& self, const Tensor& divisor) {
-  return self.div(divisor);
+Tensor true_divide(const Tensor& self, const Tensor& other) {
+  return self.div(other);
 }
 
-Tensor& true_divide_(Tensor& self, const Tensor& divisor) {
-  return native::div_out(self, self, divisor);
+Tensor& true_divide_(Tensor& self, const Tensor& other) {
+  return native::div_out(self, self, other);
 }
 
 Tensor& remainder_out(Tensor& result, const Tensor& self, const Tensor& other) {
@@ -346,6 +346,15 @@ Tensor div(const Tensor& self, Scalar other) {
 // used for Python)
 Tensor& div_(Tensor& self, Scalar other) {
   return self.div_(wrapped_scalar_tensor(other)); // redispatch!
+}
+
+// true_divide, alias of div
+Tensor true_divide(const Tensor& self, Scalar other) {
+  return self.div(wrapped_scalar_tensor(other));
+}
+
+Tensor& true_divide_(Tensor& self, Scalar other) {
+  return self.div_(wrapped_scalar_tensor(other));
 }
 
 Tensor remainder(const Tensor& self, Scalar other) {
@@ -872,14 +881,6 @@ Tensor nextafter(const Tensor& self, const Tensor& other) {
 
 Tensor& nextafter_(Tensor& self, const Tensor& other) {
   return at::nextafter_out(self, self, other);
-}
-
-Tensor true_divide(const Tensor& self, Scalar divisor) {
-  return self.true_divide(wrapped_scalar_tensor(divisor)); // redispatch!
-}
-
-Tensor& true_divide_(Tensor& self, Scalar divisor) {
-  return self.true_divide_(wrapped_scalar_tensor(divisor)); // redispatch!
 }
 
 // Note: this function is only for testing.
