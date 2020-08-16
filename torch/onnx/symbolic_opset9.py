@@ -104,39 +104,14 @@ def mul(g, self, other):
     return g.op("Mul", self, other)
 
 # Division in PyTorch is always "true" division like Python 3
-# This is mimicked in ONNX by attempting to cast both inputs to float types
-# Cases:
-#   If both inputs are floating, performs div as usual
-#   If only one input is a floating type, the other input is cast to its type
-#   If neither input is a floating type, both inputs are cast to the default scalar type
+# Trying to mimick this in ONNX would error-prone, so this throws a warning
+#   telling users how to structure their networks, instead.
 def div(g, self, other):
-    # Case 1: both values are floating
-    # Performs div as usual
-    if sym_help._is_fp(self) and sym_help._is_fp(other):
-        return g.op("Div", self, other)
-
-    # Case 2: self is floating, other is not
-    # Casts other to self's dtype
-    if sym_help._is_fp(self):
-        other = g.op("Cast", other, to_i=sym_help.cast_pytorch_to_onnx[self.type().scalarType()])
-        return g.op("Div", self, other)
-
-    # Case 3: other is floating, self is not
-    # Casts self to other's dtype
-    if sym_help._is_fp(other):
-        other = g.op("Cast", other, to_i=sym_help.cast_pytorch_to_onnx[other.type().scalarType()])
-        return g.op("Div", self, other)
-
-    # Case 4: neither is floating
-    # Casts both inputs to the default scalar type
-    scalar_type = torch.get_default_dtype()
-    assert scalar_type is torch.float or scalar_type is torch.double
-    onnx_scalar_type = sym_help.cast_pytorch_to_onnx['Float']
-    if torch.get_default_dtype() is torch.double:
-        onnx_scalar_type = sym_help.cast_pytorch_to_onnx['Double']
-
-    self = g.op("Cast", self, to_i=onnx_scalar_type)
-    other = g.op("Cast", other, to_i=onnx_scalar_type)
+    warnings.warn("Div in ONNX performs floor division with integer inputs, " +
+                  "unlike division in PyTorch which always performs true " +
+                  "division. Ensure your inputs to div are the same dtype " +
+                  "and cast them to a float dtype before performing the " +
+                  "division to the same behavior as PyTorch.")
     return g.op("Div", self, other)
 
 

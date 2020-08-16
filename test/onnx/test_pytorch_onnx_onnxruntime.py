@@ -823,9 +823,7 @@ class TestONNXRuntime(unittest.TestCase):
         x = torch.randn(2, 3, 4).to(torch.int)
         y = torch.arange(1, 2 * 3 * 4 + 1).reshape(2, 3, 4).to(torch.int)
         self.run_test(DivModule(), (x, y))
-        self.run_test(DivModule(), (x.float(), y))
         self.run_test(DivModule(), (x.float(), y.float()))
-        self.run_test(DivModule(), (x.to(torch.short), y.to(torch.short)))
 
     # Note: div cannot (generally) be exported via scripting
     # since its type promotion logic is dependent on knowing the scalar types
