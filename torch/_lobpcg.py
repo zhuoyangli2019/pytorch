@@ -57,19 +57,7 @@ class LOBPCGAutogradFunction(torch.autograd.Function):
                 Ut
             )
         )
-        # make res symmetric. The operation below does make sense assuming that
-        # A is symmetric, so that the variable A_ij is equavalent to the variable A_ji.
-        # This implies that the gradient contribution of A_ij
-        # is the sum of contributions, i.e.
-        # the A_ij gradient contribution is the sum (A_grad_ij + A_grad_ji).
-        # Now, we can modify the values A_grad_ij and A_grad_ji to any new values
-        # A_grad_new_ij and A_grad_new_ji which preserve the initial sum, i.e.
-        # it must be (A_grad_new_ij + A_grad_new_ji) == (A_grad_ij + A_grad_ji).
-        # We make the following transformation: A_grad_new_ij = (A_grad_ij + A_grad_ji) / 2,
-        # so that A_grad_new becomes symmetric.
-        # This way, along with A being symmetric, guarantees that the gradient descent step
-        # A_new = A - t * A_grad is still a symmetric matrix.
-        #return (res + res.transpose(-1, -2)).mul(0.5)
+
         return res
 
     @staticmethod
