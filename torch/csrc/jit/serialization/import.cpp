@@ -149,6 +149,14 @@ IValue ScriptModuleDeserializer::readArchive(const std::string& archive_name) {
     size_t n = cls->numAttributes();
     if (checkHasValidSetGetState(cls)) {
       auto obj = c10::ivalue::Object::create(type, n);
+
+      // If the object supports legacy data format, run the conversion function.
+      IValue input_to_use = input;
+      if (cls->hasMethod("convertLegacyFormat")) {
+        Function& convert_legacy_format = cls->getMethod("convertLegacyFormat");
+        input_to_use = convert_legacy_format({input});
+      }
+
       // XXX: Do not optimize __setstate__, so that we don't try to
       // specialize the class before it is initialized.
       GraphOptimizerEnabledGuard guard(false);
@@ -161,8 +169,8 @@ IValue ScriptModuleDeserializer::readArchive(const std::string& archive_name) {
       // to the state object being passed.
       // TODO: Remove once [serialization type tags] is landed
       restoreAccurateTypeTags(
-          input, set_state.getSchema().arguments().at(1).type());
-      set_state({obj, input});
+          input_to_use, set_state.getSchema().arguments().at(1).type());
+      set_state({obj, input_to_use});
       postSetStateValidate(obj);
       return obj;
     } else {
