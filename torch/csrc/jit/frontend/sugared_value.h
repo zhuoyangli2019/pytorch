@@ -31,7 +31,11 @@ struct TORCH_API SugaredValue
   // what can we do with this thing?
   // use it as a value e.g.  `this + 4`
   virtual Value* asValue(const SourceRange& loc, Function& m) {
-    throw ErrorReport(loc) << kind() << " cannot be used as a value";
+    throw ErrorReport(loc)
+        << kind() << " cannot be used as a value. "
+        << "Perhaps it is a closed over global variable? If so, please "
+        << "consider passing it in as an argument or use a local varible "
+        << "instead.";
   }
 
   // select an attribute on it, e.g. `this.field`
