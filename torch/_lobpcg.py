@@ -34,8 +34,8 @@ class LOBPCGAutogradFunction(torch.autograd.Function):
                 ):
         # type: (...) -> Tuple[Tensor, Tensor]
 
-        #D, U = lobpcg(A, k, B, X, n, iK, niter, tol, largest, method, tracker, ortho_iparams, ortho_fparams, ortho_bparams)
-        D, U = torch.symeig(A, eigenvectors=True, upper=True)
+        #A_sym = (A + A.transpose(-2, -1)) / 2
+        D, U = lobpcg(A, k, B, X, n, iK, niter, tol, largest, method, tracker, ortho_iparams, ortho_fparams, ortho_bparams)
 
         ctx.save_for_backward(A, B, D, U)
 
@@ -43,7 +43,7 @@ class LOBPCGAutogradFunction(torch.autograd.Function):
 
     @staticmethod
     def symeig_backward(D_grad, U_grad, A, D, U):
-        # compute F, such that F_ij = (d_i - d_j)^{-1} for i != j, F_ii = 0
+        # compute F, such that F_ij = (d_j - d_i)^{-1} for i != j, F_ii = 0
         F = D.unsqueeze(-2) - D.unsqueeze(-1)
         F.diagonal().fill_(float('inf'))
         F.pow_(-1)
@@ -69,7 +69,8 @@ class LOBPCGAutogradFunction(torch.autograd.Function):
         # so that A_grad_new becomes symmetric.
         # This way, along with A being symmetric, guarantees that the gradient descent step
         # A_new = A - t * A_grad is still a symmetric matrix.
-        return (res + res.transpose(-1, -2)).mul(0.5)
+        #return (res + res.transpose(-1, -2)).mul(0.5)
+        return res
 
     @staticmethod
     def backward(ctx, D_grad, U_grad):
