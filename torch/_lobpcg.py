@@ -97,8 +97,8 @@ def lobpcg2(A,                   # type: Tensor
     # type: (...) -> Tuple[Tensor, Tensor]
 
     # While it is expected that `A` is symmetric,
-    # the `A_grad` might be not. Therefore we performe the trick below,
-    # which quarantees that `A_grad` is symmetric.
+    # the `A_grad` might be not. Therefore we perform the trick below,
+    # so that `A_grad` becomes symmetric.
     # The symmetrization is important for first-order optimization method,
     # so that (A - alpha * A_grad) is still a symmetric matrix.
     A_sym = (A + A.transpose(-2, -1)) / 2
