@@ -34,7 +34,6 @@ class LOBPCGAutogradFunction(torch.autograd.Function):
                 ):
         # type: (...) -> Tuple[Tensor, Tensor]
 
-        #A_sym = (A + A.transpose(-2, -1)) / 2
         D, U = lobpcg(A, k, B, X, n, iK, niter, tol, largest, method, tracker, ortho_iparams, ortho_fparams, ortho_bparams)
 
         ctx.save_for_backward(A, B, D, U)
@@ -96,7 +95,14 @@ def lobpcg2(A,                   # type: Tensor
             ortho_bparams=None,  # type: Optional[Dict[str, bool]]
             ):
     # type: (...) -> Tuple[Tensor, Tensor]
-    return LOBPCGAutogradFunction.apply(A, k, B, X, n, iK, niter, tol, largest, method, tracker, ortho_iparams, ortho_fparams, ortho_bparams)
+
+    # While it is expected that `A` is symmetric,
+    # the `A_grad` might be not. Therefore we performe the trick below,
+    # which quarantees that `A_grad` is symmetric.
+    # The symmetrization is important for first-order optimization method,
+    # so that (A - alpha * A_grad) is still a symmetric matrix.
+    A_sym = (A + A.transpose(-2, -1)) / 2
+    return LOBPCGAutogradFunction.apply(A_sym, k, B, X, n, iK, niter, tol, largest, method, tracker, ortho_iparams, ortho_fparams, ortho_bparams)
 
 
 def lobpcg(A,                   # type: Tensor
