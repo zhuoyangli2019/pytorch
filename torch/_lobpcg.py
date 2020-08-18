@@ -49,7 +49,7 @@ class LOBPCGAutogradFunction(torch.autograd.Function):
         F.pow_(-1)
 
         # A.grad = U (D.grad + (U^T U.grad * F)) U^T
-        Ut = U.transpose(-1, -2)
+        Ut = U.transpose(-1, -2).contiguous()
         res = torch.matmul(
             U,
             torch.matmul(
