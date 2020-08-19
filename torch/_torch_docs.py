@@ -1698,6 +1698,30 @@ Example::
     tensor([-1 - 1j, -2 - 2j, 3 + 3j])
 """.format(**common_args))
 
+add_docstr(torch.fast_conj,
+           r"""
+fast_conj(input, out=None) -> Tensor
+
+This function has the same behavior as :func:`conj` for tensors of complex dtype. If :attr:`input` tensor
+has a non-complex dtype, this function returns the :attr:`input` tensor.
+
+.. math::
+    \text{out}_{i} = conj(\text{input}_{i})
+""" + r"""
+Args:
+    {input}
+    {out}
+
+Example::
+
+    >>> a = torch.tensor([1, 2, 3])
+    >>> b = a.fast_conj()
+    >>> a is b
+    True
+    >>> torch.fast_conj(torch.tensor([-1 + 1j, -2 + 2j, 3 - 3j]))
+    tensor([-1 - 1j, -2 - 2j, 3 + 3j])
+""".format(**common_args))
+
 add_docstr(torch.cos,
            r"""
 cos(input, out=None) -> Tensor

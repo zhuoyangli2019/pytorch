@@ -288,6 +288,10 @@
 
 - func: conj.out(Tensor self, *, Tensor(a!) out) -> Tensor(a!)
 
+- func: fast_conj(Tensor self) -> Tensor
+  use_c10_dispatcher: full
+  variants: function, method
+
 - func: acos(Tensor self) -> Tensor
   use_c10_dispatcher: full
   variants: function, method
