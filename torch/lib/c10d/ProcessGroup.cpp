@@ -1,8 +1,33 @@
 #include <c10d/ProcessGroup.hpp>
 
 #include <c10/util/Logging.h>
+#include <sys/types.h>
+#include <torch/custom_class.h>
 
 namespace c10d {
+
+
+// Torchbind the ProcessGroup to make it available in TorchScript
+static auto processGroupWork =
+  torch::class_<::c10d::ProcessGroup::Work>("dist_c10d", "Work")
+    .def(torch::init<>())
+    .def("is_completed", &::c10d::ProcessGroup::Work::isCompleted)
+    .def("is_success", &::c10d::ProcessGroup::Work::isSuccess)
+    .def("source_rank", &::c10d::ProcessGroup::Work::sourceRank)
+    .def("synchronize", &::c10d::ProcessGroup::Work::synchronize);
+
+// Torchbind AllToAllOptions to make it available in TorchScript
+// NOTE: we only exposed the constructor, and didn't expose the
+// attributs to Python/TS yet because of TorchBind limitation
+// TODO: remove pybind and universally use TorchBind when TorchBind
+// could handle std::chrono like pybind
+static auto allToAllOptions =
+  torch::class_<::c10d::AllToAllOptions>("dist_c10d", "AllToAllOption")
+    .def(torch::init<>());
+
+static auto processGroup =
+  torch::class_<::c10d::ProcessGroup>("dist_c10d", "ProcessGroup");
+
 
 ProcessGroup::Work::~Work() {}
 
@@ -21,7 +46,7 @@ std::exception_ptr ProcessGroup::Work::exception() const {
   return exception_;
 }
 
-int ProcessGroup::Work::sourceRank() const {
+int64_t ProcessGroup::Work::sourceRank() const {
   throw std::runtime_error(
       "sourceRank() may only be called on work objects "
       "that correspond to a recv or recv-from-any call.");
