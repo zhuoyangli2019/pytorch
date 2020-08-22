@@ -15,7 +15,7 @@ static const std::unordered_map<Symbol, Symbol> alias_map = {
     {aten::linalg_det, aten::det},
     {aten::outer, aten::ger},
     {aten::true_divide, aten::div},
-    {aten::true_divide_, aten::div_}};
+    {aten::true_divide_, aten::div_},
     {aten::arccosh, aten::acosh},
     {aten::arccosh_, aten::acosh_},
     {aten::arccos, aten::acos},
