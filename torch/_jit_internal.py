@@ -463,6 +463,15 @@ def ignore(drop=False, **kwargs):
         fn._torchscript_modifier = FunctionModifiers.IGNORE
         return fn
 
+    if isinstance(drop, property):
+        prop = drop
+        setattr(prop.fget, "_torchscript_modifier", FunctionModifiers.IGNORE)  # noqa: B010
+
+        if prop.fset:
+            setattr(prop.fset, "_torchscript_modifier", FunctionModifiers.IGNORE)  # noqa: B010
+
+        return prop
+
     if not isinstance(drop, bool):
         raise RuntimeError("Argument to @torch.jit.ignore must be a bool or "
                            "a function but got {}".format(drop))

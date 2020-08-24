@@ -542,6 +542,55 @@ class TestScriptPy3(JitTestCase):
         # Check that ignored method is still intact.
         self.assertEqual(inp, n.ignored_method(inp))
 
+    def test_module_properties(self):
+        class ModuleWithProperties(torch.nn.Module):
+            def __init__(self, a: int):
+                super().__init__()
+                self.a = a
+
+            def forward(self, a: int, b: int):
+                self.attr = a + b
+                return self.attr
+
+            @property
+            def attr(self):
+                return self.a
+
+            @torch.jit.ignore
+            @property
+            def ignored_attr(self):
+                return sum([self.a])
+
+            @attr.setter
+            def attr(self, a: int):
+                if a > 0:
+                    self.a = a
+                else:
+                    self.a = 0
+
+        class ModuleWithNoSetter(torch.nn.Module):
+            def __init__(self, a: int):
+                super().__init__()
+                self.a = a
+
+            def forward(self, a: int, b: int):
+                self.attr + a + b
+
+            @property
+            def attr(self):
+                return self.a + 1
+
+        self.checkModule(ModuleWithProperties(5), (5, 6,))
+        self.checkModule(ModuleWithProperties(5), (-5, -6,))
+        self.checkModule(ModuleWithNoSetter(5), (5, 6,))
+        self.checkModule(ModuleWithNoSetter(5), (-5, -6,))
+
+        mod = ModuleWithProperties(3)
+        scripted_mod = torch.jit.script(mod)
+
+        with self.assertRaisesRegex(torch.nn.modules.module.ModuleAttributeError, "has no attribute"):
+            scripted_mod.ignored_attr
+
     def test_export_opnames_interface(self):
         global OneTwoModule
 
