@@ -44,7 +44,7 @@ class LOBPCGAutogradFunction(torch.autograd.Function):
         return D, U
 
     @staticmethod
-    def symeig_backward(D_grad, U_grad, A, D, U):
+    def _symeig_backward_complete_eigenspace(D_grad, U_grad, A, D, U):
         # compute F, such that F_ij = (d_j - d_i)^{-1} for i != j, F_ii = 0
         F = D.unsqueeze(-2) - D.unsqueeze(-1)
         F.diagonal().fill_(float('inf'))
@@ -63,6 +63,22 @@ class LOBPCGAutogradFunction(torch.autograd.Function):
         return res
 
     @staticmethod
+    def _symeig_backward_partial_eigenspace(D_grad, U_grad, A, D, U):
+        pass
+
+    @staticmethod
+    def _symeig_backward(D_grad, U_grad, A, D, U):
+        # if `U` is square, then the columns of `U` is a complete eigenspace
+        if U.size(-1) == U.size(-2):
+            return LOBPCGAutogradFunction._symeig_backward_complete_eigenspace(
+                D_grad, U_grad, A, D, U
+            )
+        else:
+            return LOBPCGAutogradFunction._symeig_backward_partial_eigenspace(
+                D_grad, U_grad, A, D, U
+            )
+
+    @staticmethod
     def backward(ctx, D_grad, U_grad):
         A_grad = B_grad = None
         grads = [None] * 14
@@ -71,7 +87,7 @@ class LOBPCGAutogradFunction(torch.autograd.Function):
 
         # symeig backward
         if B is None:
-            A_grad = LOBPCGAutogradFunction.symeig_backward(
+            A_grad = LOBPCGAutogradFunction._symeig_backward(
                 D_grad, U_grad, A, D, U
             )
 
