@@ -34,10 +34,24 @@ class LOBPCGAutogradFunction(torch.autograd.Function):
                 ):
         # type: (...) -> Tuple[Tensor, Tensor]
 
-        # D, U = lobpcg(A, k, B, X, n, iK, niter, tol, largest, method, tracker, ortho_iparams, ortho_fparams, ortho_bparams)
+        D1, U1 = lobpcg(A, k, B, X, n, iK, niter, tol, largest, method, tracker, ortho_iparams, ortho_fparams, ortho_bparams)
+        D1 = D1.flip([-1])
+        U1 = U1.flip([-1])
         D, U = torch.symeig(A, eigenvectors=True, upper=True)
         D = D[..., -k:]
         U = U[..., :, -k:]
+
+        print("---------")
+        print("A.shape=", A.shape, " k=", k)
+        print("dD: ", (D - D1).abs().max())
+        print("dU: ", (U - U1).abs().max())
+        print("U:", U)
+        print("U1:", U1)
+        print("---------")
+        #print("D1: ", D1)
+        #print("D: ", D)
+        #print("U1: ", U1)
+        #print("U: ", U)
 
         ctx.save_for_backward(A, B, D, U)
 
