@@ -63,6 +63,31 @@ class LOBPCGAutogradFunction(torch.autograd.Function):
         return res
 
     @staticmethod
+    def _polynomial_coefficients_given_roots(roots):
+        """
+        Given `roots` of a polynomial, find the polynomial's coefficients.
+
+        If roots = {r_1, ..., r_n}, then the method returns
+        coefficients {a_0, a_1, ..., a_n (== 1)} so that
+        p(x) = (x - r_1) * ... * (x - r_n)
+             = x^n + a_{n-1} * x^{n-1} + ... a_1 * x_1 + a_0
+        """
+        poly_order = roots.shape[-1]
+        poly_coeffs_shape = list(roots.shape)
+        # we assume p(x) = x^n + a_{n-1} * x^{n-1} + ... + a_1 * x + a_0,
+        # so poly_coeffs = {a_0, ..., a_n, a_{n+1}(== 1)}
+        poly_coeffs_shape[-1] += 1
+        poly_coeffs = roots.new_zeros(poly_coeffs_shape)
+        poly_coeffs[..., -1] = 1
+
+        # perform Horner's rule
+        for i in range(1, poly_order + 1):
+            for j in range(poly_order - i - 1, poly_order):
+                poly_coeffs[..., j] -= roots[..., i - 1] * poly_coeffs[..., j + 1]
+
+        return poly_coeffs
+
+    @staticmethod
     def _symeig_backward_partial_eigenspace(D_grad, U_grad, A, D, U):
         pass
 
