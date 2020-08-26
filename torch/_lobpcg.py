@@ -71,6 +71,8 @@ class LOBPCGAutogradFunction(torch.autograd.Function):
         coefficients {a_0, a_1, ..., a_n (== 1)} so that
         p(x) = (x - r_1) * ... * (x - r_n)
              = x^n + a_{n-1} * x^{n-1} + ... a_1 * x_1 + a_0
+
+        Note: for better performance requires writing a low-level kernel
         """
         poly_order = roots.shape[-1]
         poly_coeffs_shape = list(roots.shape)
