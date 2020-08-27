@@ -34,23 +34,16 @@ class LOBPCGAutogradFunction(torch.autograd.Function):
                 ):
         # type: (...) -> Tuple[Tensor, Tensor]
 
-        torch.manual_seed(11)
         D, U = lobpcg(A, k, B, X, n, iK, niter, tol, largest, method, tracker, ortho_iparams, ortho_fparams, ortho_bparams)
-        #D, U = lobpcg(A, k, B, X, n, iK, niter, tol, largest, method, tracker, ortho_iparams, ortho_fparams, ortho_bparams)
-        #D, U = lobpcg(A, k, B, X, n, iK, niter, tol, largest, method, tracker, ortho_iparams, ortho_fparams, ortho_bparams)
-        #D1 = D1.flip([-1])
-        #U1 = U1.flip([-1])
-        #D, U = torch.symeig(A, eigenvectors=True, upper=True)
-        #D = D[..., -k:]
-        #U = U[..., :, -k:]
-
-        #print("---------")
-        #print("A.shape=", A.shape, " k=", k)
-        #print("dD: ", (D - D1).abs().max())
-        #print("dU: ", (U - U1).abs().max())
-        print("U:", U)
-        #print("U1:", U1)
-        #print("---------")
+        # LOBPCG uses a random eigenspace approximation
+        # if parameter `X` is not provided.
+        # This may cause a non-deterministic behavior
+        # when it comes to the sign of an eigenvector
+        # (note if v is an eigenvector, so is -v),
+        # hence we eliminate this non-determinism
+        # by making sure that U[..., 0, :].sign() == 1
+        sign = U[..., 0, :].sign()
+        U = U * sign
 
         ctx.save_for_backward(A, B, D, U)
 
