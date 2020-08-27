@@ -872,30 +872,6 @@ std::shared_ptr<ProcessGroup::Work> ProcessGroupNCCL::collective(
       [](std::vector<at::cuda::CUDAStream>&) {});
 }
 
-template <typename Fn>
-std::shared_ptr<ProcessGroup::Work> ProcessGroupNCCL::collective(
-    std::vector<at::Tensor>& inputs,
-    std::vector<at::Tensor>& outputs,
-    Fn fn) {
-  return collective(
-      inputs,
-      outputs,
-      c10::optional<std::vector<at::cuda::CUDAStream>>(),
-      fn,
-      [](std::vector<at::cuda::CUDAStream>&) {},
-      [](std::vector<at::cuda::CUDAStream>&) {});
-}
-
-template <typename Fn, typename PreProcess, typename PostProcess>
-std::shared_ptr<ProcessGroup::Work> ProcessGroupNCCL::collective(
-    std::vector<at::Tensor>& inputs,
-    std::vector<at::Tensor>& outputs,
-    Fn fn,
-    PreProcess pre,
-    PostProcess post) {
-  return collective(
-      inputs, outputs, c10::optional<std::vector<at::cuda::CUDAStream>>(), fn, pre, post);
-}
 std::shared_ptr<ProcessGroup::Work> ProcessGroupNCCL::allreduce(
     std::vector<at::Tensor>& tensors,
     const AllreduceOptions& opts) {
@@ -935,9 +911,13 @@ std::shared_ptr<ProcessGroup::Work> ProcessGroupNCCL::broadcast(
     const BroadcastOptions& opts) {
   check_gpu_tensors(tensors);
 
+  const NCCLBroadcastOptions& ncclOpts =
+      static_cast<const NCCLBroadcastOptions&>(opts);
+
   return collective(
       tensors,
       tensors,
+      ncclOpts.cudaStreams,
       [&](at::Tensor& input,
           at::Tensor& output,
           ncclComm_t comm,
@@ -958,9 +938,13 @@ std::shared_ptr<ProcessGroup::Work> ProcessGroupNCCL::reduce(
     const ReduceOptions& opts) {
   check_gpu_tensors(tensors);
 
+  const NCCLReduceOptions& ncclOpts =
+      static_cast<const NCCLReduceOptions&>(opts);
+
   return collective(
       tensors,
       tensors,
+      ncclOpts.cudaStreams,
       [&](at::Tensor& input,
           at::Tensor& output,
           ncclComm_t comm,
@@ -984,6 +968,9 @@ std::shared_ptr<ProcessGroup::Work> ProcessGroupNCCL::allgather(
     const AllgatherOptions& opts) {
   check_gpu_tensors(inputTensors);
 
+  const NCCLAllgatherOptions& ncclOpts =
+      static_cast<const NCCLAllgatherOptions&>(opts);
+
   auto outputFlattened =
       flatten_for_scatter_gather(outputTensors, inputTensors, size_);
   check_gpu_tensors(outputFlattened);
@@ -991,6 +978,7 @@ std::shared_ptr<ProcessGroup::Work> ProcessGroupNCCL::allgather(
   return collective(
       inputTensors,
       outputFlattened,
+      ncclOpts.cudaStreams,
       [&](at::Tensor& input,
           at::Tensor& output,
           ncclComm_t comm,
@@ -1035,6 +1023,9 @@ std::shared_ptr<ProcessGroup::Work> ProcessGroupNCCL::reduce_scatter(
     const ReduceScatterOptions& opts) {
   check_gpu_tensors(outputTensors);
 
+  const NCCLReduceScatterOptions& ncclOpts =
+      static_cast<const NCCLReduceScatterOptions&>(opts);
+
   auto inputFlattened =
       flatten_for_scatter_gather(inputTensors, outputTensors, size_);
   check_gpu_tensors(inputFlattened);
@@ -1042,6 +1033,7 @@ std::shared_ptr<ProcessGroup::Work> ProcessGroupNCCL::reduce_scatter(
   return collective(
       inputFlattened,
       outputTensors,
+      ncclOpts.cudaStreams,
       [&](at::Tensor& input,
           at::Tensor& output,
           ncclComm_t comm,
@@ -1119,15 +1111,20 @@ std::shared_ptr<ProcessGroup::Work> ProcessGroupNCCL::alltoall_base(
     at::Tensor& inputTensor,
     std::vector<int64_t>& outputSplitSizes,
     std::vector<int64_t>& inputSplitSizes,
-    const AllToAllOptions& /* unused */) {
+    const AllToAllOptions& opts) {
   check_gpu_single_tensor(outputTensor);
   check_gpu_single_tensor(inputTensor);
+
+  const NCCLAllToAllOptions& ncclOpts =
+      static_cast<const NCCLAllToAllOptions&>(opts);
+
   if (outputSplitSizes.size() == 0 && inputSplitSizes.size() == 0) {
     std::vector<at::Tensor> inputTensors = {inputTensor};
     std::vector<at::Tensor> outputTensors = {outputTensor};
     return collective(
         inputTensors,
         outputTensors,
+        ncclOpts.cudaStreams,
         [&](at::Tensor& input,
             at::Tensor& output,
             ncclComm_t comm,
@@ -1149,6 +1146,7 @@ std::shared_ptr<ProcessGroup::Work> ProcessGroupNCCL::alltoall_base(
     return collective(
         inputTensors,
         outputTensors,
+        ncclOpts.cudaStreams,
         [&](at::Tensor& input,
             at::Tensor& output,
             ncclComm_t comm,
