@@ -447,6 +447,23 @@ ProcessGroupNCCL::~ProcessGroupNCCL() {
   terminateProcessGroup_.store(true);
   watchdogCV_.notify_one();
   workVectorCV_.notify_one();
+
+  std::unique_lock<std::mutex> lock(workListMutex_);
+  // Clean up any remaining items in the workList_ instead of waiting for the
+  // workCleanup Thread to be scheduled again.
+  for (auto it = workList_.begin(); it != workList_.end();
+       /* no increment*/) {
+    auto& work = *it;
+    if (work->isCompleted()) {
+      it = workList_.erase(it);
+    } else {
+      ++it;
+    }
+  }
+  // Wait for workList_ to become empty before proceeding with shutdown.
+  workVectorCV_.wait(lock, [&]() -> bool { return workList_.empty(); });
+  lock.unlock();
+
 #ifdef ENABLE_NCCL_ERROR_CHECKING
   ncclCommWatchdogThread_.join();
 #endif
@@ -622,6 +639,13 @@ void ProcessGroupNCCL::workCleanupLoop() {
         // completed.
         ++it;
       }
+    }
+
+    if (workList_.empty()) {
+      // Notify the main thread if it is blocked in the shutdown sequence,
+      // waiting for the work vector to become empty.
+      lock.unlock();
+      workVectorCV_.notify_one();
     }
   }
 }
