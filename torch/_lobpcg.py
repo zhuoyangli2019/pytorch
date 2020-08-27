@@ -41,8 +41,10 @@ class LOBPCGAutogradFunction(torch.autograd.Function):
         # when it comes to the sign of an eigenvector
         # (note if v is an eigenvector, so is -v),
         # hence we eliminate this non-determinism
-        # by making sure that U[..., 0, :].sign() == 1
-        sign = U[..., 0, :].sign()
+        # by making sure that each column of U
+        # gets multiplied by the sign of its max (in absolute value) element.
+        _, idx = U.abs().max(-2)
+        sign = U[..., idx, torch.arange(k)].sign()
         U = U * sign
 
         ctx.save_for_backward(A, B, D, U)
