@@ -74,7 +74,7 @@ def prepare_jit(model, qconfig_dict, inplace=False):
 def prepare_dynamic_jit(model, qconfig_dict, inplace=False):
     return _prepare_jit(model, qconfig_dict, inplace, quant_type=QuantType.DYNAMIC)
 
-def _convert_jit(model, inplace=False, debug=False, quant_type=QuantType.STATIC):
+def _convert_jit(model, inplace=False, debug=False, freeze_only_quant_ops=False, quant_type=QuantType.STATIC):
     _check_is_script_module(model)
     model.eval()
     model_c = model._c
@@ -83,35 +83,35 @@ def _convert_jit(model, inplace=False, debug=False, quant_type=QuantType.STATIC)
         # Moving model parameters to CPU since quantized operators
         # are only supported on CPU right now
         model.cpu()
-        model_c = torch._C._jit_pass_quant_finalize(model_c, quant_type)
+        model_c = torch._C._jit_pass_quant_finalize(model_c, quant_type, freeze_only_quant_ops)
     if inplace:
         model._reconstruct(model_c)
     else:
         model = wrap_cpp_module(model_c)
     return model
 
-def convert_jit(model, inplace=False, debug=False):
-    return _convert_jit(model, inplace, debug, quant_type=QuantType.STATIC)
+def convert_jit(model, inplace=False, debug=False, freeze_only_quant_ops=False):
+    return _convert_jit(model, inplace, debug, freeze_only_quant_ops, quant_type=QuantType.STATIC)
 
-def convert_dynamic_jit(model, inplace=False, debug=False):
-    return _convert_jit(model, inplace, debug, quant_type=QuantType.DYNAMIC)
+def convert_dynamic_jit(model, inplace=False, debug=False, freeze_only_quant_ops=False):
+    return _convert_jit(model, inplace, debug, freeze_only_quant_ops, quant_type=QuantType.DYNAMIC)
 
-def _quantize_jit(model, qconfig_dict, run_fn=None, run_args=None, inplace=False, debug=False, quant_type=QuantType.STATIC):
+def _quantize_jit(model, qconfig_dict, run_fn=None, run_args=None, inplace=False, debug=False, quant_type=QuantType.STATIC, freeze_only_quant_ops=False):
     # Always do inplace convert because the Tensor is already
     # copied in prepare_jit when inplace is False
     if quant_type == QuantType.DYNAMIC:
         model = prepare_dynamic_jit(model, qconfig_dict, inplace)
-        model = convert_dynamic_jit(model, True, debug)
+        model = convert_dynamic_jit(model, True, debug, freeze_only_quant_ops)
     else:
         assert run_fn, "Must provide calibration function for post training static quantization"
         assert run_args, "Must provide calibration dataset for post training static quantization"
         model = prepare_jit(model, qconfig_dict, inplace)
         run_fn(model, *run_args)
-        model = convert_jit(model, True, debug)
+        model = convert_jit(model, True, debug, freeze_only_quant_ops)
 
     return model
 
-def quantize_jit(model, qconfig_dict, run_fn, run_args, inplace=False, debug=False):
+def quantize_jit(model, qconfig_dict, run_fn, run_args, inplace=False, debug=False, freeze_only_quant_ops=False):
     r"""Quantize the input float TorchScript model with
     post training static quantization.
 
@@ -161,9 +161,9 @@ def quantize_jit(model, qconfig_dict, run_fn, run_args, inplace=False, debug=Fal
         [data_loader_test])
     ```
     """
-    return _quantize_jit(model, qconfig_dict, run_fn, run_args, inplace, debug, quant_type=QuantType.STATIC)
+    return _quantize_jit(model, qconfig_dict, run_fn, run_args, inplace, debug, quant_type=QuantType.STATIC, freeze_only_quant_ops=freeze_only_quant_ops)
 
-def quantize_dynamic_jit(model, qconfig_dict, inplace=False, debug=False):
+def quantize_dynamic_jit(model, qconfig_dict, inplace=False, debug=False, freeze_only_quant_ops=False):
     r"""Quantize the input float TorchScript model with
     post training dynamic quantization.
     Currently only qint8 quantization of torch.nn.Linear is supported.
@@ -201,4 +201,4 @@ def quantize_dynamic_jit(model, qconfig_dict, inplace=False, debug=False):
         [data_loader_test])
     ```
     """
-    return _quantize_jit(model, qconfig_dict, inplace=inplace, debug=debug, quant_type=QuantType.DYNAMIC)
+    return _quantize_jit(model, qconfig_dict, inplace=inplace, debug=debug, quant_type=QuantType.DYNAMIC, freeze_only_quant_ops=freeze_only_quant_ops)
